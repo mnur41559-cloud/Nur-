@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="bn" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>নূরের সেরা রুটিন (NUR Er Sera Rutin)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0D9488',
+                        secondary: '#0F766E',
+                        darkBg: '#0F172A',
+                        cardBg: '#1E293B',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-full flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🌙</span>
+                <div>
+                    <h1 class="text-2xl font-bold text-teal-400 tracking-wide">নূরের সেরা রুটিন</h1>
+                    <p class="text-xs text-slate-400">আপনার দৈনিক সাফল্যের সুশৃঙ্খল রুটিন</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- Sound Toggle Button -->
+                <button id="soundToggleBtn" onclick="toggleSound()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-full text-sm border border-slate-700 transition">
+                    <span id="soundIcon">🔕</span>
+                    <span id="soundText">সতর্কতা বন্ধ</span>
+                </button>
+                
+                <!-- Real-time Clock -->
+                <div id="liveClock" class="bg-teal-950 text-teal-300 font-mono text-base px-3 py-1.5 rounded-lg border border-teal-800">
+                    --:--:-- --
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-6 space-y-6">
+
+        <!-- Active Task & Countdown Card -->
+        <section id="activeCardContainer" class="bg-gradient-to-br from-slate-900 to-teal-950 border-2 border-teal-600/50 rounded-2xl p-5 shadow-xl relative overflow-hidden transition-all duration-300">
+            <div class="absolute top-0 right-0 transform translate-x-4 -translate-y-4 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-teal-400 animate-pulse"></span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-teal-400">চলমান কার্যক্রম (Active Slot)</span>
+                    </div>
+                    <h2 id="activeTaskTitle" class="text-xl sm:text-2xl font-bold text-white">লোড হচ্ছে...</h2>
+                    <p id="activeTaskTime" class="text-sm text-teal-200/80 font-medium"></p>
+                </div>
+
+                <!-- Countdown Timer Display -->
+                <div class="bg-slate-900/80 border border-teal-500/30 rounded-xl px-4 py-3 text-center min-w-[150px] shadow-inner">
+                    <div class="text-xs text-slate-400 mb-0.5">বাকি সময়</div>
+                    <div id="countdownDisplay" class="text-2xl sm:text-3xl font-mono font-bold text-teal-300">00:00</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Routine Schedule List Section -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                    <span>📋</span> সারা দিনের রুটিন তালিকা
+                </h3>
+                <span class="text-xs text-slate-400">মোট ১৫টি স্লট</span>
+            </div>
+
+            <!-- Routine Items Container -->
+            <div id="routineList" class="space-y-3">
+                <!-- Javascript will inject routine cards here -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+        নূরের সেরা রুটিন &copy; ২০২৬ | সুশৃঙ্খল জীবনই সফল জীবনের চাবিকাঠি।
+    </footer>
+
+    <!-- Audio Element for Alerts -->
+    <audio id="alertSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Application Script -->
+    <script>
+        // Routine Data hardcoded in Bengali with start/end time in minutes from midnight for calculation
+        const routineData = [
+            {
+                startStr: "০৫:০০ AM", endStr: "০৫:৪৫ AM",
+                startMin: 5 * 60, endMin: 5 * 60 + 45,
+                title: "ফজর নামাজ ও ওযু",
+                icon: "🕌"
+            },
+            {
+                startStr: "০৬:০০ AM", endStr: "০৭:০০ AM",
+                startMin: 6 * 60, endMin: 7 * 60,
+                title: "কুরআন মাজিদ ও তাজভিদ / আরবি পড়া",
+                icon: "📖"
+            },
+            {
+                startStr: "০৭:০০ AM", endStr: "০২:০০ PM",
+                startMin: 7 * 60, endMin: 14 * 60,
+                title: "মাদ্রাসার ক্লাস ও যোহর নামাজ",
+                icon: "🏫"
+            },
+            {
+                startStr: "০২:০০ PM", endStr: "০৪:০০ PM",
+                startMin: 14 * 60, endMin: 16 * 60,
+                title: "দুপুরের খাবার, গোসল ও বিশ্রাম",
+                icon: "🍲"
+            },
+            {
+                startStr: "০৪:০০ PM", endStr: "০৪:১৫ PM",
+                startMin: 16 * 60, endMin: 16 * 60 + 15,
+                title: "আসর নামাজ",
+                icon: "🕌"
+            },
+            {
+                startStr: "০৪:১৫ PM", endStr: "০৫:১৫ PM",
+                startMin: 16 * 60 + 15, endMin: 17 * 60 + 15,
+                title: "১ম মোবাইল ব্রেক 📱 (১ ঘণ্টা)",
+                icon: "📱"
+            },
+            {
+                startStr: "০৫:১৫ PM", endStr: "০৬:০০ PM",
+                startMin: 17 * 60 + 15, endMin: 18 * 60,
+                title: "খেলাধুলা বা বন্ধুদের সাথে আড্ডা",
+                icon: "⚽"
+            },
+            {
+                startStr: "০৬:০০ PM", endStr: "০৬:২০ PM",
+                startMin: 18 * 60, endMin: 18 * 60 + 20,
+                title: "মাগরিব নামাজ",
+                icon: "🕌"
+            },
+            {
+                startStr: "০৬:২০ PM", endStr: "০৭:৩০ PM",
+                startMin: 18 * 60 + 20, endMin: 19 * 60 + 30,
+                title: "গণিত ও বিজ্ঞান পড়া",
+                icon: "📐"
+            },
+            {
+                startStr: "০৭:৩০ PM", endStr: "০৭:৫০ PM",
+                startMin: 19 * 60 + 30, endMin: 19 * 60 + 50,
+                title: "এশা নামাজ",
+                icon: "🕌"
+            },
+            {
+                startStr: "০৭:৫০ PM", endStr: "০৮:৩০ PM",
+                startMin: 19 * 60 + 50, endMin: 20 * 60 + 30,
+                title: "২য় মোবাইল ব্রেক 📱 (৪০ মিনিট)",
+                icon: "📱"
+            },
+            {
+                startStr: "০৮:৩০ PM", endStr: "০৯:৪৫ PM",
+                startMin: 20 * 60 + 30, endMin: 21 * 60 + 45,
+                title: "বাংলা, ইংরেজি, আকাইদ ও ফিকহ পড়া",
+                icon: "📚"
+            },
+            {
+                startStr: "০৯:৪৫ PM", endStr: "১০:১৫ PM",
+                startMin: 21 * 60 + 45, endMin: 22 * 60 + 15,
+                title: "রাতের খাবার ও রিভিশন",
+                icon: "🍽️"
+            },
+            {
+                startStr: "১০:১৫ PM", endStr: "১০:৪৫ PM",
+                startMin: 22 * 60 + 15, endMin: 22 * 60 + 45,
+                title: "৩য় মোবাইল ব্রেক 📱 (৩০ মিনিট)",
+                icon: "📱"
+            },
+            {
+                startStr: "১০:৪৫ PM", endStr: "০৫:০০ AM",
+                startMin: 22 * 60 + 45, endMin: 5 * 60, // Crosses midnight
+                title: "ঘুমিয়ে পড়া 😴",
+                icon: "🌙"
+            }
+        ];
+
+        let soundEnabled = false;
+        let lastActiveIndex = -1;
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            const text = document.getElementById('soundText');
+            if (soundEnabled) {
+                icon.textContent = "🔔";
+                text.textContent = "সতর্কতা চালু";
+                // Play a brief silent/test sound or trigger unlock
+                document.getElementById('alertSound').play().catch(() => {});
+            } else {
+                icon.textContent = "🔕";
+                text.textContent = "সতর্কতা বন্ধ";
+            }
+        }
+
+        function renderRoutineList() {
+            const container = document.getElementById('routineList');
+            container.innerHTML = '';
+
+            routineData.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.id = `routine-item-${index}`;
+                card.className = "flex items-center justify-between p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 transition-all duration-200";
+                
+                card.innerHTML = `
+                    <div class="flex items-center gap-3.5">
+                        <span class="text-2xl">${item.icon}</span>
+                        <div>
+                            <h4 id="title-${index}" class="text-sm sm:text-base font-semibold text-slate-200">${item.title}</h4>
+                            <p class="text-xs text-slate-400 font-mono mt-0.5">${item.startStr} - ${item.endStr}</p>
+                        </div>
+                    </div>
+                    <div id="badge-${index}" class="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                        অপেক্ষমাণ
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function getCurrentTimeInMinutes(date) {
+            return date.getHours() * 60 + date.getMinutes();
+        }
+
+        function updateApp() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            // Update Real-time Clock display with Bengali digits or standard format
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = hours % 12 || 12;
+            const timeString = `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
+            document.getElementById('liveClock').textContent = timeString;
+
+            const currentTotalMin = hours * 60 + minutes;
+            const currentTotalSecWithMin = currentTotalMin * 60 + seconds;
+
+            // Find current active index
+            let activeIndex = -1;
+
+            for (let i = 0; i < routineData.length; i++) {
+                let item = routineData[i];
+                if (item.startMin < item.endMin) {
+                    // Normal range within same day
+                    if (currentTotalMin >= item.startMin && currentTotalMin < item.endMin) {
+                        activeIndex = i;
+                        break;
+                    }
+                } else {
+                    // Crosses midnight (e.g., 10:45 PM to 05:00 AM)
+                    if (currentTotalMin >= item.startMin || currentTotalMin < item.endMin) {
+                        activeIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // Fallback if none matched perfectly
+            if (activeIndex === -1) activeIndex = 0;
+
+            // Trigger alert if task changed and sound is enabled
+            if (lastActiveIndex !== -1 && lastActiveIndex !== activeIndex && soundEnabled) {
+                const audio = document.getElementById('alertSound');
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log("Audio play blocked by browser policy"));
+            }
+            lastActiveIndex = activeIndex;
+
+            // Update Active Card Header & details
+            const activeItem = routineData[activeIndex];
+            document.getElementById('activeTaskTitle').textContent = `${activeItem.icon} ${activeItem.title}`;
+            document.getElementById('activeTaskTime').textContent = `সময়সূচী: ${activeItem.startStr} - ${activeItem.endStr}`;
+
+            // Calculate exact seconds remaining for countdown
+            let endTotalSec = activeItem.endMin * 60;
+            if (activeItem.startMin > activeItem.endMin && currentTotalMin < activeItem.endMin) {
+                // If past midnight, endMin is today early morning
+                endTotalSec = activeItem.endMin * 60;
+            } else if (activeItem.startMin > activeItem.endMin && currentTotalMin >= activeItem.startMin) {
+                // Before midnight, endMin is on the next day
+                endTotalSec = (activeItem.endMin + 24 * 60) * 60;
+            }
+            
+            let currentSecAbsolute = currentTotalMin * 60 + seconds;
+            if (activeItem.startMin > activeItem.endMin && currentTotalMin < activeItem.endMin) {
+                currentSecAbsolute += 24 * 60 * 60;
+            }
+
+            let remSec = endTotalSec - currentSecAbsolute;
+            if (remSec < 0) remSec = 0;
+
+            const remMinLeft = Math.floor(remSec / 60);
+            const remSecLeft = remSec % 60;
+            document.getElementById('countdownDisplay').textContent = `${String(remMinLeft).padStart(2, '0')}:${String(remSecLeft).padStart(2, '0')}`;
+
+            // Update routine list UI styles
+            routineData.forEach((item, index) => {
+                const card = document.getElementById(`routine-item-${index}`);
+                const badge = document.getElementById(`badge-${index}`);
+                const titleElem = document.getElementById(`title-${index}`);
+
+                if (index === activeIndex) {
+                    card.className = "flex items-center justify-between p-3.5 rounded-xl border-2 border-teal-500 bg-slate-900 shadow-lg shadow-teal-950/50 transition-all duration-200 transform scale-[1.01]";
+                    badge.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-teal-500 text-slate-950 shadow animate-pulse";
+                    badge.textContent = "চলমান";
+                    titleElem.className = "text-sm sm:text-base font-bold text-teal-300";
+                } else if (index < activeIndex || (activeIndex === 0 && index === routineData.length - 1)) {
+                    // Past items
+                    card.className = "flex items-center justify-between p-3.5 rounded-xl border border-slate-800/80 bg-slate-900/40 opacity-60 transition-all duration-200";
+                    badge.className = "text-xs px-2.5 py-1 rounded-full font-medium bg-slate-800 text-slate-500 border border-slate-700/50";
+                    badge.textContent = "সম্পন্ন";
+                    titleElem.className = "text-sm sm:text-base font-medium text-slate-400";
+                } else {
+                    // Upcoming items
+                    card.className = "flex items-center justify-between p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 transition-all duration-200";
+                    badge.className = "text-xs px-2.5 py-1 rounded-full font-medium bg-slate-800 text-slate-400 border border-slate-700";
+                    badge.textContent = "আসছে";
+                    titleElem.className = "text-sm sm:text-base font-semibold text-slate-200";
+                }
+            });
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderRoutineList();
+            updateApp();
+            setInterval(updateApp, 1000);
+        });
+    </script>
+</body>
+  </html>
