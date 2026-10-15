@@ -73,9 +73,15 @@
                 </div>
 
                 <!-- Countdown Timer Display -->
-                <div class="bg-slate-900/80 border border-teal-500/30 rounded-xl px-4 py-3 text-center min-w-[150px] shadow-inner">
-                    <div class="text-xs text-slate-400 mb-0.5">বাকি সময়</div>
-                    <div id="countdownDisplay" class="text-2xl sm:text-3xl font-mono font-bold text-teal-300">00:00</div>
+                <div class="flex flex-col items-center gap-2">
+                    <div class="bg-slate-900/80 border border-teal-500/30 rounded-xl px-4 py-3 text-center min-w-[150px] shadow-inner">
+                        <div class="text-xs text-slate-400 mb-0.5">বাকি সময়</div>
+                        <div id="countdownDisplay" class="text-2xl sm:text-3xl font-mono font-bold text-teal-300">00:00</div>
+                    </div>
+                    <!-- Stop Alarm Button (Only shows when alarm is actively ringing) -->
+                    <button id="stopAlarmBtn" onclick="stopRingingAlarm()" class="hidden bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow animate-bounce transition">
+                        🔕 অ্যালার্ম থামান
+                    </button>
                 </div>
             </div>
         </section>
@@ -102,14 +108,13 @@
         নূরের সেরা রুটিন &copy; ২০২৬ | সুশৃঙ্খল জীবনই সফল জীবনের চাবিকাঠি।
     </footer>
 
-    <!-- Audio Element for Alerts -->
-    <audio id="alertSound" preload="auto">
+    <!-- Audio Element for Alerts (Loop attribute added so it rings continuously) -->
+    <audio id="alertSound" loop preload="auto">
         <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
     </audio>
 
     <!-- Application Script -->
     <script>
-        // Routine Data hardcoded in Bengali with start/end time in minutes from midnight for calculation
         const routineData = [
             {
                 startStr: "০৫:০০ AM", endStr: "০৫:৪৫ AM",
@@ -197,28 +202,64 @@
             },
             {
                 startStr: "১০:৪৫ PM", endStr: "০৫:০০ AM",
-                startMin: 22 * 60 + 45, endMin: 5 * 60, // Crosses midnight
+                startMin: 22 * 60 + 45, endMin: 5 * 60,
                 title: "ঘুমিয়ে পড়া 😴",
                 icon: "🌙"
             }
         ];
 
-        let soundEnabled = false;
+        // Load sound toggle preference from LocalStorage
+        let soundEnabled = localStorage.getItem('routine_sound_enabled') === 'true';
         let lastActiveIndex = -1;
+        let isAlarmRinging = false;
 
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
+        function updateSoundUI() {
             const icon = document.getElementById('soundIcon');
             const text = document.getElementById('soundText');
             if (soundEnabled) {
                 icon.textContent = "🔔";
                 text.textContent = "সতর্কতা চালু";
-                // Play a brief silent/test sound or trigger unlock
-                document.getElementById('alertSound').play().catch(() => {});
             } else {
                 icon.textContent = "🔕";
                 text.textContent = "সতর্কতা বন্ধ";
             }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('routine_sound_enabled', soundEnabled);
+            updateSoundUI();
+
+            const audio = document.getElementById('alertSound');
+            if (soundEnabled) {
+                // Play and pause immediately to satisfy browser autoplay restriction
+                audio.play().then(() => {
+                    if (!isAlarmRinging) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }
+                }).catch(() => {});
+            } else {
+                stopRingingAlarm();
+            }
+        }
+
+        function playAlarmSound() {
+            if (!soundEnabled) return;
+            const audio = document.getElementById('alertSound');
+            audio.currentTime = 0;
+            audio.play().then(() => {
+                isAlarmRinging = true;
+                document.getElementById('stopAlarmBtn').classList.remove('hidden');
+            }).catch(e => console.log("Audio playback blocked:", e));
+        }
+
+        function stopRingingAlarm() {
+            const audio = document.getElementById('alertSound');
+            audio.pause();
+            audio.currentTime = 0;
+            isAlarmRinging = false;
+            document.getElementById('stopAlarmBtn').classList.add('hidden');
         }
 
         function renderRoutineList() {
@@ -246,38 +287,30 @@
             });
         }
 
-        function getCurrentTimeInMinutes(date) {
-            return date.getHours() * 60 + date.getMinutes();
-        }
-
         function updateApp() {
             const now = new Date();
             const hours = now.getHours();
             const minutes = now.getMinutes();
             const seconds = now.getSeconds();
 
-            // Update Real-time Clock display with Bengali digits or standard format
+            // Real-time Clock display
             const ampm = hours >= 12 ? 'PM' : 'AM';
             const displayHours = hours % 12 || 12;
             const timeString = `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
             document.getElementById('liveClock').textContent = timeString;
 
             const currentTotalMin = hours * 60 + minutes;
-            const currentTotalSecWithMin = currentTotalMin * 60 + seconds;
 
-            // Find current active index
+            // Find current active slot index
             let activeIndex = -1;
-
             for (let i = 0; i < routineData.length; i++) {
                 let item = routineData[i];
                 if (item.startMin < item.endMin) {
-                    // Normal range within same day
                     if (currentTotalMin >= item.startMin && currentTotalMin < item.endMin) {
                         activeIndex = i;
                         break;
                     }
                 } else {
-                    // Crosses midnight (e.g., 10:45 PM to 05:00 AM)
                     if (currentTotalMin >= item.startMin || currentTotalMin < item.endMin) {
                         activeIndex = i;
                         break;
@@ -285,29 +318,24 @@
                 }
             }
 
-            // Fallback if none matched perfectly
             if (activeIndex === -1) activeIndex = 0;
 
-            // Trigger alert if task changed and sound is enabled
-            if (lastActiveIndex !== -1 && lastActiveIndex !== activeIndex && soundEnabled) {
-                const audio = document.getElementById('alertSound');
-                audio.currentTime = 0;
-                audio.play().catch(e => console.log("Audio play blocked by browser policy"));
+            // Trigger alarm when routine slot changes
+            if (lastActiveIndex !== -1 && lastActiveIndex !== activeIndex) {
+                playAlarmSound();
             }
             lastActiveIndex = activeIndex;
 
-            // Update Active Card Header & details
+            // Active Task Card Header & details
             const activeItem = routineData[activeIndex];
             document.getElementById('activeTaskTitle').textContent = `${activeItem.icon} ${activeItem.title}`;
             document.getElementById('activeTaskTime').textContent = `সময়সূচী: ${activeItem.startStr} - ${activeItem.endStr}`;
 
-            // Calculate exact seconds remaining for countdown
+            // Calculate countdown timer
             let endTotalSec = activeItem.endMin * 60;
             if (activeItem.startMin > activeItem.endMin && currentTotalMin < activeItem.endMin) {
-                // If past midnight, endMin is today early morning
                 endTotalSec = activeItem.endMin * 60;
             } else if (activeItem.startMin > activeItem.endMin && currentTotalMin >= activeItem.startMin) {
-                // Before midnight, endMin is on the next day
                 endTotalSec = (activeItem.endMin + 24 * 60) * 60;
             }
             
@@ -323,7 +351,7 @@
             const remSecLeft = remSec % 60;
             document.getElementById('countdownDisplay').textContent = `${String(remMinLeft).padStart(2, '0')}:${String(remSecLeft).padStart(2, '0')}`;
 
-            // Update routine list UI styles
+            // Update routine item status styles
             routineData.forEach((item, index) => {
                 const card = document.getElementById(`routine-item-${index}`);
                 const badge = document.getElementById(`badge-${index}`);
@@ -335,13 +363,11 @@
                     badge.textContent = "চলমান";
                     titleElem.className = "text-sm sm:text-base font-bold text-teal-300";
                 } else if (index < activeIndex || (activeIndex === 0 && index === routineData.length - 1)) {
-                    // Past items
                     card.className = "flex items-center justify-between p-3.5 rounded-xl border border-slate-800/80 bg-slate-900/40 opacity-60 transition-all duration-200";
                     badge.className = "text-xs px-2.5 py-1 rounded-full font-medium bg-slate-800 text-slate-500 border border-slate-700/50";
                     badge.textContent = "সম্পন্ন";
                     titleElem.className = "text-sm sm:text-base font-medium text-slate-400";
                 } else {
-                    // Upcoming items
                     card.className = "flex items-center justify-between p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 transition-all duration-200";
                     badge.className = "text-xs px-2.5 py-1 rounded-full font-medium bg-slate-800 text-slate-400 border border-slate-700";
                     badge.textContent = "আসছে";
@@ -350,12 +376,13 @@
             });
         }
 
-        // Initialize on load
+        // Initialize on page load
         window.addEventListener('DOMContentLoaded', () => {
+            updateSoundUI();
             renderRoutineList();
             updateApp();
             setInterval(updateApp, 1000);
         });
     </script>
 </body>
-  </html>
+    </html>
